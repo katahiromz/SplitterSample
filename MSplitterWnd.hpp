@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef MZC4_MSPLITTERWND_HPP_
-#define MZC4_MSPLITTERWND_HPP_      4   /* Version 4 */
+#define MZC4_MSPLITTERWND_HPP_      6   /* Version 6 */
 
 class MSplitterWnd;
 
@@ -25,7 +25,9 @@ class MSplitterWnd : public MWindowBase
 public:
     enum { m_cxyBorder = 4, m_cxyMin = 8 };
 
-    MSplitterWnd() : m_iDraggingBorder(-1), m_nPaneCount(0)
+    MSplitterWnd() : m_iDraggingBorder(-1), m_nPaneCount(0),
+        m_hcurNS(::LoadCursor(NULL, IDC_SIZENS)),
+        m_hcurWE(::LoadCursor(NULL, IDC_SIZEWE))
     {
         m_vecPanes.resize(1);
     }
@@ -117,6 +119,12 @@ public:
         }
 
         m_vecPanes[nIndex].xyPos = nPos;
+    }
+
+    INT GetPaneExtent(INT nIndex) const
+    {
+        assert(0 <= nIndex && nIndex < m_nPaneCount);
+        return m_vecPanes[nIndex + 1].xyPos - m_vecPanes[nIndex].xyPos;
     }
 
     VOID SetPaneExtent(INT nIndex, INT cxy, BOOL bUpdate = TRUE)
@@ -245,6 +253,7 @@ public:
         HANDLE_MSG(hwnd, WM_SETCURSOR, OnSetCursor);
         HANDLE_MSG(hwnd, WM_COMMAND, OnCommand);
         HANDLE_MSG(hwnd, WM_NOTIFY, OnNotify);
+        HANDLE_MSG(hwnd, WM_CONTEXTMENU, OnContextMenu);
         case WM_CAPTURECHANGED:
             m_iDraggingBorder = -1;
             return 0;
@@ -272,6 +281,20 @@ public:
         return FORWARD_WM_NOTIFY(GetParent(hwnd), idFrom, pnmhdr, SendMessage);
     }
 
+    void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
+    {
+        FORWARD_WM_CONTEXTMENU(GetParent(hwnd), hwndContext, xPos, yPos, SendMessage);
+    }
+
+    void SetCursorNS(HCURSOR hcurNS)
+    {
+        m_hcurNS = hcurNS;
+    }
+    void SetCursorWE(HCURSOR hcurWE)
+    {
+        m_hcurWE = hcurWE;
+    }
+
 protected:
     struct PANEINFO
     {
@@ -288,6 +311,8 @@ protected:
     };
     INT                     m_iDraggingBorder;
     INT                     m_nPaneCount;
+    HCURSOR                 m_hcurNS;
+    HCURSOR                 m_hcurWE;
     std::vector<PANEINFO>   m_vecPanes;
 
     void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
@@ -304,9 +329,9 @@ protected:
         m_iDraggingBorder = iBorder;
 
         if (IsVertical())
-            ::SetCursor(::LoadCursor(NULL, IDC_SIZENS));
+            ::SetCursor(m_hcurNS);
         else
-            ::SetCursor(::LoadCursor(NULL, IDC_SIZEWE));
+            ::SetCursor(m_hcurWE);
     }
 
     void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
@@ -348,11 +373,11 @@ protected:
             INT dxy = cxy - m_vecPanes[m_nPaneCount].xyPos;
             for (INT i = 1; i < m_nPaneCount; ++i)
             {
-                SetPanePos(i, m_vecPanes[i].xyPos + dxy);
+                SetPanePos(i, m_vecPanes[i].xyPos + dxy, FALSE);
             }
         }
 
-        SetPanePos(m_nPaneCount, cxy);
+        SetPanePos(m_nPaneCount, cxy, FALSE);
         UpdatePanes();
     }
 
@@ -369,9 +394,9 @@ protected:
         }
 
         if (IsVertical())
-            ::SetCursor(::LoadCursor(NULL, IDC_SIZENS));
+            ::SetCursor(m_hcurNS);
         else
-            ::SetCursor(::LoadCursor(NULL, IDC_SIZEWE));
+            ::SetCursor(m_hcurWE);
         return TRUE;
     }
 };
